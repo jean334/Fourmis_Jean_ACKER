@@ -6,17 +6,15 @@
 
 ## Présentation du problème
 <div style="text-align: justify;">
-
-L'algorithme d'exploration de labyrinthe par une colonie de fourmis (**ACO**: *Ants Colonization Optimisation*) est un des algorithme en essaim les plus connu. Cette classe d'algorithme s'inspire du comportement d'une population d'insects pour résoudre divers problème et son massivement paralélisable. 
+L'algorithme d'exploration de labyrinthe par une colonie de fourmis (<strong>ACO</strong>: <i>Ants Colonization Optimisation</i>) est un des algorithme en essaim les plus connu. Cette classe d'algorithme s'inspire du comportement d'une population d'insects pour résoudre divers problème et son massivement paralélisable. 
+ACO vise à résoudre le problème de fourragement, à savoir la recherche du chemin le plus cours de la fourmilière à une source de nourriture.
 </div>
 
-ACO vise à résoudre le problème de fourragement, à savoir la recherche du chemin le plus cours de la fourmilière à une source de nourriture.
+
 
 <div style="text-align: justify;">
-
-**Remarque :** les simulations sont exécutés sur une processur Ryzen 7 6800HS cadencé à 3201 MHz, disposant de 8 coeurs et de 16 threads. 
-
-**Remarque :** Certains fichiers concenernant la deuxième version du programme (affichage et calcul séparé) ont du être modifiés pour pouvoir paralléliser l'algorithme. ils se terminent par *_affichage.py*. De même, les fichiers relatifs à la troisième version du programme se terminent par *_p.py*. Le rapport est rédigé en markdown afin de pouvoir automatiser au maximum l'insertion des valeurs dans les tableaux et les graphiques (qui sont mis à jour automatiquement lors de l'éxecution des programmes). Pour lancer un programme, il faut rajouter le nombre d'itération. Dans ce rapport, toutes les simulations ont été faite sur 5000 itérations : `mpiexec -n "nbp" python ants_p.py 5000" par exemple.    
+<strong>Remarque :</strong> les simulations sont exécutés sur une processur Ryzen 7 6800HS cadencé à 3201 MHz, disposant de 8 coeurs et de 16 threads. 
+<strong>Remarque :</strong> Certains fichiers concenernant la deuxième version du programme (affichage et calcul séparé) ont du être modifiés pour pouvoir paralléliser l'algorithme. ils se terminent par <i>_affichage.py</i>. De même, les fichiers relatifs à la troisième version du programme se terminent par <i>_p.py</i>. Le rapport est rédigé en markdown afin de pouvoir automatiser au maximum l'insertion des valeurs dans les tableaux et les graphiques (qui sont mis à jour automatiquement lors de l'éxecution des programmes). Pour lancer un programme, il faut rajouter le nombre d'itération. Dans ce rapport, toutes les simulations ont été faite sur 5000 itérations : <code>mpiexec -n "nbp" python ants_p.py 5000</code> par exemple.    
 </div>
 
 ***
@@ -32,7 +30,7 @@ Dans un premier temps, on cherche simplement à séparer l'affichage (**CPU0**),
 - **Pheromon** : permetant de créer l'objet `pherom`
 
 <div style="text-align: justify;">
-Ces 3 classes présentent chacune une méthode `display`, qui doit donc être appelée par CPU0. Néanmoins, les objets `ants`, `a_maze` et `pherom` sont construits dans CPU1, puisqu'ils sont majortairement utilisés pour calculer l'itération suivante de l'algorithme. Afin de pouvoir utiliser la méthode `display` dans CPU0, ces dernières ont été modifier de la manière suivante
+Ces 3 classes présentent chacune une méthode <code>display</code>, qui doit donc être appelée par CPU0. Néanmoins, les objets <code>ants</code>, <code>a_maze</code> et <code>pherom</code> sont construits dans CPU1, puisqu'ils sont majortairement utilisés pour calculer l'itération suivante de l'algorithme. Afin de pouvoir utiliser la méthode <code>display</code> dans CPU0, ces dernières ont été modifier de la manière suivante
 </div>
 
 **`Class Colony`**
@@ -105,7 +103,7 @@ la balise `@classmethod` permet d'utiliser une méthode comme une fonction sans 
     comm.Recv(food_counter_buff, source=1, tag=6)
 ```
 <div style="text-align: justify;">
-Le partage des attributs est fait de cette manière car il n'est pas possible d'envoyer un objet complet (les fonctions  `Recv()` et `Send()` ne peuvent être utilisés que pour envoyer et recevoir des `numpy array`). Cela permet également d'économiser la mémoire de CPU0. Enfin, les attributs qui ne sont pas nécessaire au calcul de l'itération suivante ont été supprimer des classes conernées, pour être directement définit dans CPU0:
+Le partage des attributs est fait de cette manière car il n'est pas possible d'envoyer un objet complet (les fonctions  <code>Recv()</code> et <code>Send()</code> ne peuvent être utilisés que pour envoyer et recevoir des <code>numpy array</code>). Cela permet également d'économiser la mémoire de CPU0. Enfin, les attributs qui ne sont pas nécessaire au calcul de l'itération suivante ont été supprimer des classes conernées, pour être directement définit dans CPU0:
 </div>
 
 ```python
@@ -136,13 +134,12 @@ Les performances sont établies sur *4000* itération et sur un labyrinthe *25x2
 </div>
 
 **Explication de la légende** : 
->- Le *temps de calcul par CPU1* correspond au temps que met CPU1 pour calculer l'itération suivante, à savoir  `ants.advance()` et `pherom.do_evaporation()`
+>- Le <code>temps de calcul par CPU1</code> correspond au temps que met CPU1 pour calculer l'itération suivante, à savoir  <code>ants.advance()</code> et `pherom.do_evaporation()`
 >- Le *temps d'envoi des données* correspond au temps que me CPU1 pour envoyer les données nécessaire à CPU0.
 >- Le *temps total par itération* correspond à la somme des deux temps précédent, c'est donc le temps total que prend CPU1.
 >- Le *temps d'affichage* correspond au temps que met CPU0 pour afficher le labyrinthe et la fourmis à l'écran.
 
 <div style="text-align: justify;">
-
 Le temps d'envoie des données est très faible, et n'augmente le temps total de manière significative qu'à de rares occasions. En revanche, le temps d'affichage peut dépasser le temps total par itération, autrement dit, il arrive que l'affichage ralentisse la simulation. En effet, tant que l'affichage n'est pas terminé, les Send() de CPU1 vers CPU0 sont bloquant, augmentant donc <i>temps total par itération</i> et diminuant les fps. On ne peut pas utiliser de <code>Isend</code> et de <code>Irecv</code> puisqu'on risquerait de désynchroniser l'affichage du calcul de l'itération.
 </div>
 
@@ -154,8 +151,7 @@ Le temps d'envoie des données est très faible, et n'augmente le temps total de
 **Affichage et calcul séparés** | <fps2>241.98590087890625</fps2> | <nourriture2>2327</nourriture2>
 
 <div style="text-align: justify;">
-
-Les FPS sont calculés comme l'inverse de <i>temps total par itération</i>, cela prend bien en compte le temps d'affichage puisque si l'affichage prend plus de temps que le calcul de l'itération suivante, les <code>Send</code> de CPU1 vers CPU0 sont bloquant et <i>temps total par itération</i> augmente. Cela ne se voit pas sur le graphique ci-dessus puisque pour des raisons de lisibilité, seul les temps de une itération sur 100 sont affichés. Le schéma ci-dessous explicite cela. On constate un gain significatif de performance, avec un speedup de l'ordre de **1,5**.
+Les FPS sont calculés comme l'inverse de <i>temps total par itération</i>, cela prend bien en compte le temps d'affichage puisque si l'affichage prend plus de temps que le calcul de l'itération suivante, les <code>Send</code> de CPU1 vers CPU0 sont bloquant et <i>temps total par itération</i> augmente. Cela ne se voit pas sur le graphique ci-dessus puisque pour des raisons de lisibilité, seul les temps de une itération sur 100 sont affichés. Le schéma ci-dessous explicite cela. On constate un gain significatif de performance, avec un speedup de l'ordre de <strong>1,5</strong>.
 </div>
 
 <div style="display:flex;">
@@ -170,7 +166,7 @@ Les FPS sont calculés comme l'inverse de <i>temps total par itération</i>, cel
 ##### Répartition de la colonie dans les différents processus
 
 <div style="text-align: justify;">
-Dans cette partie, la colonie de fourmis va être répartie dans plusieurs CPU. CPU0 s'occupe toujours de l'affichage. Cette version du programme sera référencée comme étant la *version 3* du programme. 
+Dans cette partie, la colonie de fourmis va être répartie dans plusieurs CPU. CPU0 s'occupe toujours de l'affichage. Cette version du programme sera référencée comme étant la <i>version 3</i> du programme. 
 Les fourmis sont réparties dans les CPUs de la manière suivante:
 </div>
 
@@ -194,18 +190,16 @@ La colonie est répartie en <code>m</code> CPUs, mais doit se comporter comme un
 newComm.Allreduce(pherom.pheromon,pherom_buff,  MPI.MAX) 
 ```
 <div style="text-align: justify;">
-
-La fonction `Allreduce` permet de construire le buffer <code>pherom_buff</code> qui contient l'intensité maximale de pheromone de chaque case, ce qui correspond bien au comportement souhaité (identique à la version non parallélisé du programme). Ce buffer est ensuite renvoyé aux <code>m</code> CPUs pour que les fourmis de leur sous-colonie puissent choisir leur chemin en capitalisant sur les connaissances des autres sous-colonie.
-
-Néanmoins, l'utilisation des fonctions `Allreduce`, `Gather` et `Gatherv` posent une difficulté. En effet, les données envoyée sont souvent les attributs d'une classe (`pherom.pheromon`, `ants.directions` ...). Cependant, le CPU0 - qui ne s'occupe que de l'affichage -, ne possède pas ces attributs, puisqu'il ne construit aucune instance de la classe `Pheromon`, `Colony`. De ce fait, utiliser simplement `comm.Allreduce(pherom.pheromon, pherom_buff,  MPI.MAX)` conduit à une erreur, CPU0 n'ayant pas d'objet pherom. Pour résoudre ce problème, plusieurs solution sont possible:
-
+La fonction <code>Allreduce</code> permet de construire le buffer <code>pherom_buff</code> qui contient l'intensité maximale de pheromone de chaque case, ce qui correspond bien au comportement souhaité (identique à la version non parallélisé du programme). Ce buffer est ensuite renvoyé aux <code>m</code> CPUs pour que les fourmis de leur sous-colonie puissent choisir leur chemin en capitalisant sur les connaissances des autres sous-colonie.
+Néanmoins, l'utilisation des fonctions <code>Allreduce</code>, <code>Gather</code> et <code>Gatherv</code> posent une difficulté. En effet, les données envoyée sont souvent les attributs d'une classe (<code>pherom.pheromon</code>, <code>ants.directions</code> ...). Cependant, le CPU0 - qui ne s'occupe que de l'affichage -, ne possède pas ces attributs, puisqu'il ne construit aucune instance de la classe <code>Pheromon</code>, <code>Colony</code>. De ce fait, utiliser simplement <code>comm.Allreduce(pherom.pheromon, pherom_buff,  MPI.MAX)</code> conduit à une erreur, CPU0 n'ayant pas d'objet pherom. Pour résoudre ce problème, plusieurs solution sont possible:
+</div>
 
 >- Eviter les fonctions `Allreduce`, `Gather` et `Gatherv`, pour les remplacer par des `Send` et `Recv`. Mais cela serait assez long à coder et on perdrait beaucoup de temps pour faire tous les envoies (la communication point par point étant plus lente qu'un >`Gather` par exemple). 
 >- Créer une instance de la classe visée dans CPU0. Cette solution n'est pas idéal, car l'instance de CPU0 possèderait de nombreux attributs qui lui sont inutile, on perdrait alors l'intéret d'avoir un CPU réservé pour l'affichage. On pourrait néanmoins tirer parti de cette solution en créant une "*surcharge*" de la classe `Pheromon`, ne possédant comme seul attribut le buffer `Pheromon.pheromon`. 
 >- Créer des alias pour les attributs ayant le même non que les buffers de CPU0. Mais cela nécessite de créer des buffers temporaires `comm.Allreduce(pherom_buff_old,pherom_buff_new,  MPI.MAX)`, où `pherom_buff_old` est un alias de `pherom.pheromon` et `pherom_buff_new` acceuil les valeurs mises à jour, puisque `Allreduce` requiert que ses deux buffers (de réception et d'envoi) soit différents. Cette solution n'est donc pas viable d'un point de vu mémoire
 >- Enfin, nous pouvons créer un sous communicateur: `newComm = comm.Split(rank!=0); newRank = newComm.rank`. De cette manière, CPU0 est isolé tandis que les `m` CPUs sont dans le même sous-communicateur. `Allreduce` est alors appelée dans ce sous-communcateur. Les données devant être communiqué à CPU0 pour l'affichage sont transmisent par l'intermédiaire de CPU1.  
 
-</div>
+
 
 **Implémentation de cette dernière méthode**
 
@@ -239,7 +233,7 @@ if rank == 1:
 **Remarque :** Seul CPU0 et CPU1 possède les buffer `pherom_buff`, `directions_buff`, `historic_path_buff` et `age_buff` (ils sont mis à `None` pour les autres processus)
 
 <div style="text-align: justify;">
-**Explication des Gatherv :** `Gatherv` permet de récupérer des buffers provenant de différent processus, même si ces derniers n'ont pas tous la même taille (ce qui est le cas si le nombre de fourmis n'est pas divisible par <code>m</code>). Pour cela, il est nécessaire de transmettre un tableau d'offset, indiquant le nombre de donnée (la taille des buffers) attendues de la part de chaque processus. `ants.historic_path` est un np_array de la forme `[nb_ants, max_life+1, 2]`, je ne suis pas parvenu à utiliser Gatherv avec des buffers à trois dimensions, c'est pourquoi il est *applatit* avec la méthode `flatten`. 
+**Explication des Gatherv :** `Gatherv` permet de récupérer des buffers provenant de différent processus, même si ces derniers n'ont pas tous la même taille (ce qui est le cas si le nombre de fourmis n'est pas divisible par <code>m</code>). Pour cela, il est nécessaire de transmettre un tableau d'offset, indiquant le nombre de donnée (la taille des buffers) attendues de la part de chaque processus. <code>ants.historic_path</code> est un np_array de la forme <code>[nb_ants, max_life+1, 2]</code>, je ne suis pas parvenu à utiliser Gatherv avec des buffers à trois dimensions, c'est pourquoi il est <i>applatit</i> avec la méthode <code>flatten</code>. 
 </div>
 
 ##### Comment assurer que le code parallèle se comporte de la même façon que le code séquentiel ?
@@ -249,14 +243,13 @@ Chaque case du tableau de pheromone dépend des cases adjacentes. Dans la versio
 </div>
 
 
-<div style="display:flex;">
-    <img src="ressources/1CPU.png" style="flex:1;margin-right:5px;" width="75" height="150"/>
-    <img src="ressources/2CPUs.png" style="flex:1;margin-left:5px;" width="150" height="200"/>
+<div style="display:flex;", class="center">
+    <img src="ressources/1CPU.png" style="flex:1;margin-right:5px;" width="50" height="200"/>
+    <img src="ressources/2CPUs.png" style="flex:1;margin-left:5px;" width="100" height="250"/>
 </div>
 
 <div style="text-align: justify;">
-
-Dans ce schéma on se concentre sur la case central, qui dépend donc des cases environnantes. À gauche, (cas non-parallélisé) la case central est plus intense, en effet, elle est influencée par deux cases (à gauche et en haut). À droite (cas parallélisé), comme la colonie est séparée en plusieurs processus, il est possible que la case du haut (CPU1) ne soit pas exploré et donc que la valeur du phéromone soit nulle alors que la case de gauche est non nulle (et inversement pour CPU2). Après le `Allreduce`, on garde le maximum de chaque case, et la case central est moins intense car influencée par une seule case à la fois. 
+Dans ce schéma on se concentre sur la case central, qui dépend donc des cases environnantes. À gauche, (cas non-parallélisé) la case central est plus intense, en effet, elle est influencée par deux cases (à gauche et en haut). À droite (cas parallélisé), comme la colonie est séparée en plusieurs processus, il est possible que la case du haut (CPU1) ne soit pas exploré et donc que la valeur du phéromone soit nulle alors que la case de gauche est non nulle (et inversement pour CPU2). Après le <code>Allreduce</code>, on garde le maximum de chaque case, et la case central est moins intense car influencée par une seule case à la fois. 
 </div>
 
 Afin de rendre le comportement identique quelque soit la version du programme, la méthode `Pheromon.mark` est mdofiée pour se basé sur un tableau de phéromone fixe :
@@ -291,8 +284,8 @@ def mark(self, old_pheromon, the_position, has_WESN_exits):
 </div>
 
 <div style="text-align: justify;">
-
-**Remarque** : à la différence de la question 1, ici, **temps total par itération** prend également en compte le temps des `Gatherv` sur CPU1, autrement, le temps est moyenné sur les processus, et on ajoute le temps d'envoie des données de CPU1 vers CPU0.
+<strong>Remarque</strong> : à la différence de la question 1, ici, <strong>temps total par itération</strong> prend également en compte le temps des <code>Gatherv</code> sur CPU1, autrement, le temps est moyenné sur les processus, et on ajoute le temps d'envoie des données de CPU1 vers CPU0.
+</div>
 
 **Remarque:** : les plot commence à 10:
 
@@ -302,11 +295,12 @@ plt.plot(X[selection[10:]], temps_envoie[selection[10:]], label="temps d'envoi d
 plt.plot(X[selection[10:]], temps_total[selection[10:]], label="temps total par itération")
 plt.plot(X[selection[10:]], temps_affichage[selection[10:]], label="temps d'affichage par itération")
 ```
+<div style="text-align: justify;">
+en effet, on observe un cold start, sur <i>temps total par itération</i>, qui correspond sûrement au temps d'initialiser les communications et de charger des données dans le cache.
+</div>
 
-en effet, on observe un cold start, sur *temps total par itération*, qui correspond sûrement au temps d'initialiser les communications et de charger des données dans le cache.
-
-On constate qu'à partir de 5 processus, le *temps d'affichage* dépasse le *temps total par itération*. En effet, le temps total diminue par processus, puisque chaque processus gère moins de fourmis à la fois. En revanche, le temps d'affichage lui reste constant (cf. tableau ci-dessous). L'affichage devient donc limitant à partir de 4 processus (1 pour l'affichage et 3 pour le calcul). On remarque égelement que pour 7 et 8 processus, le *temps total par itération* semble plus suivre la courbe du *temps d'affichage*, ce qui est normal, comme expliqué sur schéma en fin de question 2, le temps d'affichage impact le *temps total par itération* de l'itération suivante. Ainsi, si la courbe du *temps total* suit plus celle du *temps d'affichage* pour un plus grand nombre de CPU, c'est parceque le temps d'affichage est systématiquement plus long que le temps total. En d'autre terme, le *temps total* est majoritairement influencé par le *temps d'affichage*.     
-
+<div style="text-align: justify;">
+On constate qu'à partir de 5 processus, le <i>temps d'affichage</i> dépasse le <i>temps total par itération</i>. En effet, le temps total diminue par processus, puisque chaque processus gère moins de fourmis à la fois. En revanche, le temps d'affichage lui reste constant (cf. tableau ci-dessous). L'affichage devient donc limitant à partir de 4 processus (1 pour l'affichage et 3 pour le calcul). On remarque égelement que pour 7 et 8 processus, le <i>temps total par itération</i> semble plus suivre la courbe du <i>temps d'affichage</i>, ce qui est normal, comme expliqué sur schéma en fin de question 2, le temps d'affichage impact le <i>temps total par itération</i> de l'itération suivante. Ainsi, si la courbe du <i>temps total</i> suit plus celle du <i>temps d'affichage</i> pour un plus grand nombre de CPU, c'est parceque le temps d'affichage est systématiquement plus long que le temps total. En d'autre terme, le <i>temps total</i> est majoritairement influencé par le <i>temps d'affichage</i>.     
 </div>
 
 || FPS Moyen | Temps de calcul moyen | Temps d'envoi des données moyen | Temps total moyen | Temps d'affichage | Nourriture totale récupérée 
@@ -320,10 +314,11 @@ On constate qu'à partir de 5 processus, le *temps d'affichage* dépasse le *tem
 **Calcul sur 8 processus** | <fps8>242.1956177355635</fps8> | <tempscalcul8>0.008168588762689165</tempscalcul8> | <tempsenvoie8>0.002083338165283203</tempsenvoie8> | <tempstotal8>0.008260256889788822</tempstotal8> | <affichage8>0.0041294069290161136</affichage8> | <nourriture8>1939</nourriture8>
 
 <div style="text-align: justify;">
+<strong>Remarque :</strong> Le temps de calcul moyen (<code>ants.advance</code> et <code>pherom.do_evaporation</code>) augmente, alors qu'il y a de moins en oins de fourmis par processus, je ne vois pas de raison particulière à cela. 
+</div>
 
-**Remarque :** Le temps de calcul moyen (`ants.advance` et `pherom.do_evaporation`) augmente, alors qu'il y a de moins en oins de fourmis par processus, je ne vois pas de raison particulière à cela. 
-
-**Remarque :** On remarque que malgré notre tentative d'assurer le même comportement pour toutes les versions du programme, la nourriture finale varie suivant le nombre de CPU. Cela se confirme d'ailleurs en regardant de plus près la simulation qui se comporte différement ou encore en regardant l'évolution de la quantité de nourriture au cours des itérations :
+<div style="text-align: justify;">
+<strong>Remarque :</strong> On remarque que malgré notre tentative d'assurer le même comportement pour toutes les versions du programme, la nourriture finale varie suivant le nombre de CPU. Cela se confirme d'ailleurs en regardant de plus près la simulation qui se comporte différement ou encore en regardant l'évolution de la quantité de nourriture au cours des itérations :
 </div>
 
 
@@ -333,8 +328,7 @@ On constate qu'à partir de 5 processus, le *temps d'affichage* dépasse le *tem
 </div>
 
 <div style="text-align: justify;">
-
-À gauche l'évolution de la nourriture pour la version non parallélisée et à droite l'évolution de la nourriture pour la version avec plusieurs processus sur le calcul. Après de longue recherche pour déboguer l'origine de cette divergence. On constate que cette dernière provient de l'attribut `seed` de la classe `Colony` est responsable de cette divergence: 
+À gauche l'évolution de la nourriture pour la version non parallélisée et à droite l'évolution de la nourriture pour la version avec plusieurs processus sur le calcul. Après de longue recherche pour déboguer l'origine de cette divergence. On constate que cette dernière provient de l'attribut <code>seed</code> de la classe <code>Colony</code> est responsable de cette divergence: 
 </div>
 
 ```python
@@ -342,8 +336,7 @@ self.seeds = np.arange(1, nb_ants+1, dtype=np.int64)
 self.seeds[:] = np.mod(16807*self.seeds[:], 2147483647)
 ```
 <div style="text-align: justify;">
-
-Dans un premier temps, la seed est calculée en fonction du nombre de fourmis dans la colonie (où la sous-colonie). Comme dans la version 3 du programme, chaque CPU possède une sous-colonie (avec un moins grand nombre de fourmis), la seed diverge donc à partir des fourmis de la sous-colonie du processus numéroté 2, puisque  `np.arrange()` recommence de 0. Il est possible de réctifier cela en transmettant en argument les indices à utiliser pour le `np.arrange` de sorte à ce que si l'on concatène toutes les seeds, on retrouve le tableau de seed de la version 1 du programme. Néanmoins, une autre ligne pose problème:
+Dans un premier temps, la seed est calculée en fonction du nombre de fourmis dans la colonie (où la sous-colonie). Comme dans la version 3 du programme, chaque CPU possède une sous-colonie (avec un moins grand nombre de fourmis), la seed diverge donc à partir des fourmis de la sous-colonie du processus numéroté 2, puisque  <code>np.arrange()</code> recommence de 0. Il est possible de réctifier cela en transmettant en argument les indices à utiliser pour le <code>np.arrange</code> de sorte à ce que si l'on concatène toutes les seeds, on retrouve le tableau de seed de la version 1 du programme. Néanmoins, une autre ligne pose problème:
 </div>
 
 ```python
@@ -354,8 +347,7 @@ while np.any(valid_moves[ind_exploring_ants] == 0):
 ```
 
 <div style="text-align: justify;">
-
-`valid_moves` fait la taille de la colonie, l'opération `self.seeds[:] = np.mod(16807*self.seeds[:], 2147483647)` est donc effectuée plus de fois dans la version 1 du programme que dans la version 3. Ainsi, `seeds` diffère d'une version à l'autre. Pour s'assurer d'avoir exactement le même comportement entre toutes les versions, il faudrait changer ces lignes. Toutefois, pour évaluer les performances de la parallélisation, il n'est pas forcément nécessaire de le faire, puisque quelque soit la version, autant d'opération seront effectuées.
+<code>valid_moves</code> fait la taille de la colonie, l'opération <code>self.seeds[:] = np.mod(16807*self.seeds[:], 2147483647)</code> est donc effectuée plus de fois dans la version 1 du programme que dans la version 3. Ainsi, <code>seeds</code> diffère d'une version à l'autre. Pour s'assurer d'avoir exactement le même comportement entre toutes les versions, il faudrait changer ces lignes. Toutefois, pour évaluer les performances de la parallélisation, il n'est pas forcément nécessaire de le faire, puisque quelque soit la version, autant d'opération seront effectuées.
 </div>
 
 **Speedup**
@@ -368,9 +360,10 @@ On peut alors tracer l'évolution du speedup en fonction du nombre de processus:
 
 <div style="text-align: justify;">
 À gauche, l'évolution du speedup par rapport à la version non parallélisé, à droite, l'évolution du speedup par rapport à la deuxième version du programme (affichage séparé).
+</div>
 
-Le speedup est donc maximal pour 5 processus, soit 4 travaillant sur le calcul de l'itération suivante et 1 sur l'affichage. En regardant de plus près les 6 courbes comparant le temps d'envoie des données, le temps de calcul moyen par processeur et le temps totale, on se rend compte que le temps d'envoie des données est près de deux fois plus long entre une exécution sur 8 processus et une exécution sur 3 processus. Si le temps d'envoie augmente, c'est parceque les opérations `Gatherv, Gather, Allreduce et Reduce` prennent d'autant plus de temps qu'il y a de processus.
-
+<div style="text-align: justify;">
+Le speedup est donc maximal pour 5 processus, soit 4 travaillant sur le calcul de l'itération suivante et 1 sur l'affichage. En regardant de plus près les 6 courbes comparant le temps d'envoie des données, le temps de calcul moyen par processeur et le temps totale, on se rend compte que le temps d'envoie des données est près de deux fois plus long entre une exécution sur 8 processus et une exécution sur 3 processus. Si le temps d'envoie augmente, c'est parceque les opérations <code>Gatherv, Gather, Allreduce et Reduce</code> prennent d'autant plus de temps qu'il y a de processus.
 Avec ce constat, on peut être tenter de réduire le temps d'envoie en enyoant un seul grand buffer: 
 </div>
 
@@ -420,39 +413,39 @@ newComm.Gatherv(sendbuf=ants.age,
 **Calcul sur 8 processus** | <fps28>265.03167969209625</fps28> | <tempscalcul28>0.008168588762689165</tempscalcul28> | <tempsenvoie28>0.0020896265983581545</tempsenvoie28> | <tempstotal28>0.008260256889788822</tempstotal28> | <affichage28>0.0040276616573333745</affichage28>
 
 <div style="text-align: justify;">
-
-On ne constate aucun gain sur le temps d'envoie des données, qui adopte un profile très similaire à la version précédente. On peut penser que `global_buffer` est trop grand et qu'il est de toutes manières envoyés en plusieurs fois. Aussi les `Gathervn Gather, Allreduce et Reduce` prennent toujours autant de temps et sont toujours aussi nombreux, c'est sûrment le temps prit par ces opérations qui prédomine les temps d'envoies.  
-
+On ne constate aucun gain sur le temps d'envoie des données, qui adopte un profile très similaire à la version précédente. On peut penser que <code>global_buffer</code> est trop grand et qu'il est de toutes manières envoyés en plusieurs fois. Aussi les <code>Gathervn Gather, Allreduce et Reduce</code> prennent toujours autant de temps et sont toujours aussi nombreux, c'est sûrment le temps prit par ces opérations qui prédomine les temps d'envoies.  
 </div>
 
 **Speedup**
 On peut alors tracer l'évolution du speedup en fonction du nombre de processus:
 
 <div style="display:flex;">
-    <img src="ressources/speedup_final.png" style="flex:1;margin-left:5px;" width="400" height="400"/>
+    <img src="ressources/speedup_final.png" style="flex:1;margin-left:5px;" class="center"/>
 </div>
 
 <div style="text-align: justify;">
-Sans surprise, Le speedup par rapport à la version 3 n'est pas significatif. On peut peut-être éspérer une différence plus marquante si un plus grand nombre de fourmis est utilisée. En effet, cela permettrait de jouer sur la granularité du problème, et d'obtenir un meilleur ratio *calcul/données envoyées*.
+Sans surprise, Le speedup par rapport à la version 3 n'est pas significatif. On peut peut-être éspérer une différence plus marquante si un plus grand nombre de fourmis est utilisée. En effet, cela permettrait de jouer sur la granularité du problème, et d'obtenir un meilleur ratio <i>calcul/données envoyées</i>.
 </div>
 
 ## Question 3
 
+<div style="text-align: justify;">
 Dans cette question, on cherche quelques piste de reflexion pour parallaléliser à la fois la colonie et le labyrinthe. On s'attaque alors à un problème à la fois eulérien et lagrangien. 
+</div>
 
 ### Première idée
 
 <div style="text-align: justify;">
-
 Le temps d'affichage est limitant dans la parallélisation du problème, il faudrait donc réussir à séparer l'affichage en plusieurs processus. Il faudrait donc se renseigner sur la possiblité de séparer l'affichage avec pygame. Les processus calculant l'itération suivante auraient accès au labyrinthe en entier et enverraient à chaque processus gérant l'affichage la portion du labyrinthe qui le concerne. Il n'y aurait donc pas de ghost cells à gérer.
 </div>
 
 ### Deuxième idée
 
 <div style="text-align: justify;">
+On peut séparer le problème en plusieurs sous labyrinthe, chacun de ces sous-labyrinthe serait afficher par 1 processus, et les fourmis de ce sous-labyrinthe seraient diriger par d'autres processus. Par exemple, si le labyrinthe est scindé en 4, il y aura <code>m/4</code> CPU pour calculer la prochaine itération au sein de ce sous labyrinthe.
+</div>
 
-On peut séparer le problème en plusieurs sous labyrinthe, chacun de ces sous-labyrinthe serait afficher par 1 processus, et les fourmis de ce sous-labyrinthe seraient diriger par d'autres processus. Par exemple, si le labyrinthe est scindé en 4, il y aura `m/4` CPU pour calculer la prochaine itération au sein de ce sous labyrinthe.
-
+<div style="text-align: justify;">
 Mais cette approche entraine des difficultées. Déjà, il faudra prendre en compte les ghost cells, puisque le calcul des phéromones dépend des valeurs environnantes et que les fourmis peuvent passer d'un sous-labyrinthe à un autre. Un autre problème est le load balancing, au vu des simulations, les fourmis on tendance à explorer une partie du labyrinthe seulement, laissant ainsi de potentiel processus s'occupant des région inexploré du labyrinthe sans travail. Une approche maître escalve pourrait donc être envisagée. Accompagnée d'une heurisitique, le processus maître pourrait alors rediriger les processus sans travail vers des régions plus exploré du labytinthe. Cette heurisitique pourrait prendre en compte le fait qu'une fois la nourriture trouvé, les régions inexplorées le resterons.
 </div>
 
